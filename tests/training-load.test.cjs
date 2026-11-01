@@ -158,6 +158,23 @@ test("unilateral accessory and bodyweight modes qualify every set without changi
   }
 });
 
+test("ex045 has exactly two warmup and two working sets with repetitions per arm", () => {
+  const result = get("ex045");
+  assert.equal(result.scheme, "2+2");
+  assert.equal(result.setCount, 4);
+  assert.equal(result.summaryRepetitions, "12–15 рабочих повт. на каждую руку");
+  assert.deepEqual(plain(result.sets.map(set => [set.type, set.repetitions, set.repetitionQualifier])), [
+    ["Разминочный", "12", "на каждую руку"], ["Разминочный", "12", "на каждую руку"],
+    ["Рабочий", "12–15", "на каждую руку"], ["Рабочий", "12–15", "на каждую руку"]
+  ]);
+  const saved = core.defaultState();
+  saved.blocks.block1["block1-position5"] = "ex045";
+  const restored = core.restoreState(JSON.stringify(saved));
+  assert.equal(restored.repaired, false);
+  assert.deepEqual(plain(restored.state), plain(saved));
+  assert.equal(get(restored.state.blocks.block1["block1-position5"]).scheme, "2+2");
+});
+
 test("unilateral presentation never changes the base prescription or adds labels to bilateral exercises", () => {
   for (const exercise of data.exercises) {
     const bilateral = load.getPrescription({ ...exercise, unilateral: false });

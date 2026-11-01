@@ -84,12 +84,13 @@
     else throw diagnostic(exercise, "неизвестная роль упражнения; ожидается «Основное» или «Вспомогательное»");
 
     if (exercise.unilateral !== true) return load;
+    const qualifier = exercise.unilateralTarget === "arm" ? "на каждую руку" : "на каждую сторону";
     // The qualifier changes presentation only, never set counts, ranges or rest.
     return Object.freeze({
       ...load,
-      summaryRepetitions: `${load.summaryRepetitions} на каждую сторону`,
+      summaryRepetitions: `${load.summaryRepetitions} ${qualifier}`,
       sets: Object.freeze(load.sets.map(set => Object.freeze({
-        ...set, repetitionQualifier: "на каждую сторону"
+        ...set, repetitionQualifier: qualifier
       })))
     });
   }

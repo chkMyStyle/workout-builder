@@ -407,7 +407,9 @@
   },
   {
     "id": "ex045",
-    "name": "Отведение рук на блоках",
+    "name": "Отведение руки в сторону с нижнего блока",
+    "unilateral": true,
+    "unilateralTarget": "arm",
     "category": "Плечи",
     "primaryMuscles": "Средние дельты",
     "secondaryMuscles": "Надостная, трапеции",

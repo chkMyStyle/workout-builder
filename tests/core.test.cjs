@@ -51,8 +51,9 @@ test("60 unique exercises and complete classifications", () => {
 
 test("original exercise metadata is unchanged apart from the approved unilateral flags and Face Pull name", () => {
   const originals = data.exercises.filter(exercise => !["ex059", "ex060"].includes(exercise.id)).map(exercise => {
-    const { unilateral, ...original } = exercise;
+    const { unilateral, unilateralTarget, ...original } = exercise;
     if (original.id === "ex030") original.name = "Тяга каната к лицу";
+    if (original.id === "ex045") original.name = "Отведение рук на блоках";
     return original;
   });
   const digest = crypto.createHash("sha256").update(JSON.stringify(originals)).digest("hex");
@@ -60,10 +61,19 @@ test("original exercise metadata is unchanged apart from the approved unilateral
   assert.equal(digest, "00b6ce6614d9a5d2358c67795bb2707bba2499b54e97ff57a65a42dd9451eb1c");
 });
 
-test("exactly the six explicitly unilateral movements have the unilateral flag", () => {
+test("exactly the seven explicitly unilateral movements have the unilateral flag", () => {
   assert.deepEqual(plain(data.exercises.filter(exercise => exercise.unilateral === true).map(exercise => exercise.id)),
-    ["ex007", "ex008", "ex009", "ex010", "ex011", "ex025"]);
+    ["ex007", "ex008", "ex009", "ex010", "ex011", "ex025", "ex045"]);
   for (const exercise of data.exercises) assert.ok(exercise.unilateral === undefined || typeof exercise.unilateral === "boolean");
+});
+
+test("single-arm cable lateral raise retains ex045 and its original classification", () => {
+  assert.deepEqual(plain(data.exerciseById.ex045), {
+    id: "ex045", name: "Отведение руки в сторону с нижнего блока",
+    unilateral: true, unilateralTarget: "arm", category: "Плечи",
+    primaryMuscles: "Средние дельты", secondaryMuscles: "Надостная, трапеции",
+    movement: "Отведение плеча", role: "Вспомогательное"
+  });
 });
 
 test("toes-to-bar is a separate core exercise and is permitted only in the existing core position", () => {

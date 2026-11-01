@@ -84,6 +84,34 @@ const defaultSchemes = [
     }
     console.log("PASS: all four original blocks, order, exact allowed menus, no duplicates and correct default load schemes");
 
+    await selectBlock("block1");
+    const beforeArmRaise = await rowState();
+    await change("block1-position5", "ex045");
+    await row("block1-position5").locator("summary").click();
+    assert.equal(await row("block1-position5").locator(".exercise-title").textContent(), "Отведение руки в сторону с нижнего блока");
+    assert.equal(await row("block1-position5").locator(".load-badge").textContent(), "2+2");
+    assert.deepEqual(await row("block1-position5").locator(".set-type").allTextContents(), ["Разминочный", "Разминочный", "Рабочий", "Рабочий"]);
+    assert.deepEqual(await row("block1-position5").locator(".set-repetitions").evaluateAll(elements => elements.map(element => element.firstChild.textContent)), ["12", "12", "12–15", "12–15"]);
+    assert.deepEqual(await row("block1-position5").locator(".set-side").allTextContents(), Array(4).fill("на каждую руку"));
+    assert.ok(await row("block1-position5").locator(".set-side").first().isVisible());
+    const afterArmRaise = await rowState();
+    for (let i = 0; i < 6; i++) if (i !== 4) assert.deepEqual(afterArmRaise[i], beforeArmRaise[i]);
+    await page.reload();
+    assert.equal(await row("block1-position5").getAttribute("data-exercise-id"), "ex045");
+    assert.equal(await row("block1-position5").locator(".exercise-title").textContent(), "Отведение руки в сторону с нижнего блока");
+    assert.deepEqual(await row("block1-position5").locator(".set-side").allTextContents(), Array(4).fill("на каждую руку"));
+    await row("block1-position5").locator("summary").click();
+    await page.setViewportSize({ width: 320, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    if (screenshots) {
+      fs.mkdirSync(screenshots, { recursive: true });
+      await row("block1-position5").screenshot({ path: path.join(screenshots, "single-arm-cable-raise.png") });
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await change("block1-position5", "ex044");
+    assert.equal(await row("block1-position5").locator(".set-side").count(), 0);
+    console.log("PASS: ex045 replacement shows the new name, four correct per-arm sets, preserves other rows and saved choices, fits 320 px and removes the label on return");
+
     await selectBlock("block2");
     const beforeUnilateral = await rowState();
     await change("block2-position1", "ex025");
