@@ -129,33 +129,32 @@
       const selected = template.id === state.activeBlockId;
       return `<button class="block-tab" id="tab-${template.id}" type="button" role="tab"
         aria-selected="${selected}" aria-controls="workout-panel" tabindex="${selected ? "0" : "-1"}"
-        data-block-id="${template.id}"><span class="tab-number">0${template.number}</span>
-        <span class="tab-copy"><span class="tab-kicker">Тренировка ${template.number}</span><span class="tab-name">${escapeHtml(template.name)}</span></span>${icon("arrow", "tab-arrow")}</button>`;
+        data-block-id="${template.id}"><span class="tab-word">Тренировка</span> <span class="tab-number">${template.number}</span></button>`;
     }).join("");
   }
 
-  function renderLoad(exercise, expanded) {
+  function renderLoad(exercise, expanded, control) {
     try {
       if (!window.WorkoutLoad) throw new Error("Не загружен файл training-load.js. Проверьте, что все файлы приложения находятся рядом.");
       const load = window.WorkoutLoad.getPrescription(exercise);
       const setWord = load.setCount === 3 ? "подхода" : "подходов";
-      const sets = load.sets.map((set, index) => `<li class="set-row">
+      const sets = load.sets.map((set, index) => `<li class="set-row" data-set-type="${escapeHtml(set.type)}">
         <span class="set-number" aria-hidden="true">${index + 1}</span>
         <span class="set-purpose"><span class="set-type">${escapeHtml(set.type)}</span>${set.weight ? `<span class="set-weight">Вес: ${escapeHtml(set.weight)}</span>` : ""}</span>
         <span class="set-repetitions">${escapeHtml(set.repetitions)}<span>${load.kind === "core" ? "" : "повт."}</span></span>${set.repetitionQualifier ? `<span class="set-side">${escapeHtml(set.repetitionQualifier)}</span>` : ""}</li>`).join("");
       return `<div class="load-summary" data-load-kind="${load.kind}" data-load-scheme="${load.scheme}">
         <span class="load-badge">${load.scheme}</span><span>${load.setCount} ${setWord}</span><span>${escapeHtml(load.summaryRepetitions)}</span></div>
-        <details class="load-details"${expanded ? " open" : ""}><summary><span>Подробнее о подходах</span>${icon("arrow", "details-arrow")}</summary>
+        <div class="exercise-actions"><div class="exercise-control">${control}</div>
+        <details class="load-details"${expanded ? " open" : ""}><summary aria-label="Подробнее о подходах"><span class="details-full">Подробнее о подходах</span><span class="details-short" aria-hidden="true">Подходы</span>${icon("arrow", "details-arrow")}</summary>
           <div class="load-details-content"><ol class="set-list" aria-label="Подходы: ${escapeHtml(exercise.name)}">${sets}</ol><p class="load-instruction">${escapeHtml(load.instruction)}</p></div>
-        </details>`;
+        </details></div>`;
     } catch (error) {
-      return `<p class="load-error" role="alert">${escapeHtml(error.message)}</p>`;
+      return `<p class="load-error" role="alert">${escapeHtml(error.message)}</p><div class="exercise-control">${control}</div>`;
     }
   }
 
   function renderExercise(template, selection, position, index, expanded) {
     const exercise = exerciseById[selection[position.positionId]];
-    const changed = exercise.id !== position.defaultExerciseId;
     const isLegCurl = template.id === "block3" && position.positionId === "block3-position4";
     let control;
     if (isLegCurl) {
@@ -168,8 +167,7 @@
     }
     return `<li class="exercise-row${isLegCurl ? " has-select" : ""}" data-position-id="${position.positionId}" data-exercise-id="${exercise.id}">
       <span class="exercise-number" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-      <div class="exercise-body">${changed ? '<span class="changed-label">Замена</span>' : ""}<h3 class="exercise-title">${escapeHtml(exercise.name)}</h3><p class="muscles">${escapeHtml(exercise.primaryMuscles)}</p>${renderLoad(exercise, expanded)}</div>
-      <div class="exercise-control">${control}</div></li>`;
+      <div class="exercise-body"><h3 class="exercise-title">${escapeHtml(exercise.name)}</h3><p class="muscles">${escapeHtml(exercise.primaryMuscles)}</p>${renderLoad(exercise, expanded, control)}</div></li>`;
   }
 
   function render() {
@@ -177,20 +175,14 @@
     const selection = state.blocks[template.id];
     renderTabs();
     byId("workout-panel").setAttribute("aria-labelledby", `tab-${template.id}`);
-    byId("block-label").textContent = `ТРЕНИРОВКА ${String(template.number).padStart(2, "0")} / 04`;
-    byId("workout-title").textContent = template.name;
-    byId("workout-focus").innerHTML = `Акцент: <strong>${escapeHtml(template.focus)}</strong>`;
     const expandedPositions = new Set([...list.querySelectorAll(".load-details[open]")].map(details => details.closest(".exercise-row").dataset.positionId));
     list.innerHTML = template.positions.map((position, index) => renderExercise(template, selection, position, index, expandedPositions.has(position.positionId))).join("");
     const changeCount = template.positions.filter(position => selection[position.positionId] !== position.defaultExerciseId).length;
-    byId("change-count").textContent = changeCount === 0 ? "Исходный состав" : `${changeCount} ${changeCount === 1 ? "замена" : changeCount < 5 ? "замены" : "замен"}`;
     byId("reset-workout").disabled = changeCount === 0;
     byId("save-status").innerHTML = `${icon(storageAvailable ? "check" : "lock")}<span>${storageAvailable ? "Сохранено на устройстве" : "Сохранение недоступно"}</span>`;
     const warning = byId("storage-warning");
     warning.textContent = storageAvailable ? recoveryNotice : "Браузер запретил сохранение. Изменения действуют до обновления или закрытия страницы.";
     warning.hidden = !warning.textContent;
-    byId("cycle-track").innerHTML = templates.map((item, index) => `${index > 0 ? '<span class="track-connector"></span>' : ""}<span class="track-node${item.id === template.id ? " is-active" : ""}">${String(item.number).padStart(2, "0")}</span>`).join("");
-    byId("cycle-caption").textContent = `Сейчас выбран блок ${template.number} из 4`;
   }
 
   function selectBlock(blockId, focus = false) {
