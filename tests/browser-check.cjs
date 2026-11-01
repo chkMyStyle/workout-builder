@@ -1,0 +1,204 @@
+"use strict";
+
+// Optional development check. The application itself has no dependencies.
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
+const { chromium } = require(process.env.WORKOUT_PLAYWRIGHT_PATH || "playwright");
+const url = process.env.WORKOUT_TEST_URL || pathToFileURL(path.join(__dirname, "..", "index.html")).href;
+const executablePath = process.env.WORKOUT_CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+const screenshots = process.env.WORKOUT_SCREENSHOT_DIR;
+const defaults = [
+  ["ex001", "ex041", "ex055", "ex014", "ex044", "ex009"],
+  ["ex024", "ex031", "ex022", "ex034", "ex048", "ex052"],
+  ["ex012", "ex039", "ex017", "ex015", "ex046", "ex007"],
+  ["ex020", "ex032", "ex028", "ex037", "ex054", "ex049"]
+];
+const defaultSchemes = [
+  ["2+1+2", "2+1+2", "3×макс.", "2+2", "2+2", "2+1+2"],
+  ["2+1+2", "2+1+2", "5×12", "2+1+2", "2+2", "2+2"],
+  ["2+1+2", "2+1+2", "2+2", "2+2", "2+2", "2+1+2"],
+  ["5×12", "2+1+2", "2+1+2", "5×12", "2+2", "2+2"]
+];
+
+(async () => {
+  const browser = await chromium.launch({ executablePath, headless: true });
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    const page = await context.newPage();
+    const errors = [];
+    const thirdPartyRequests = [];
+    page.on("pageerror", error => errors.push(error.message));
+    page.on("request", request => {
+      if (/^https?:/.test(request.url()) && new URL(request.url()).origin !== new URL(url).origin) thirdPartyRequests.push(request.url());
+    });
+    await page.goto(url);
+    const templates = await page.evaluate(() => window.WorkoutTemplates);
+    const storageKey = "strength-workout-builder:v1";
+    const row = id => page.locator(`.exercise-row[data-position-id="${id}"]`);
+    const selectBlock = id => page.locator(`#tab-${id}`).click();
+    const rowState = () => page.locator(".exercise-row").evaluateAll(rows => rows.map(item => ({
+      id: item.dataset.exerciseId, position: item.dataset.positionId,
+      scheme: item.querySelector(".load-summary")?.dataset.loadScheme
+    })));
+    const assertUnique = async () => {
+      const ids = (await rowState()).map(item => item.id);
+      assert.equal(ids.length, 6);
+      assert.equal(new Set(ids).size, 6);
+    };
+    const change = async (positionId, id) => {
+      await row(positionId).locator("button.replace-button").click();
+      await page.locator(`.option-button[data-exercise-id="${id}"]`).click();
+      await page.waitForFunction(() => !document.querySelector("#replacement-dialog").open);
+    };
+
+    for (let i = 0; i < templates.length; i++) {
+      const template = templates[i];
+      await selectBlock(template.id);
+      const actual = await rowState();
+      assert.deepEqual(actual.map(item => item.id), defaults[i]);
+      assert.deepEqual(actual.map(item => item.scheme), defaultSchemes[i]);
+      await assertUnique();
+      for (const position of template.positions) {
+        if (position.allowedExerciseIds.length === 1) {
+          assert.equal(await row(position.positionId).locator("button,select").count(), 0);
+        } else if (position.positionId === "block3-position4") {
+          assert.deepEqual(await row(position.positionId).locator("option").evaluateAll(options => options.map(option => option.value)), ["ex015", "ex016"]);
+        } else {
+          await row(position.positionId).locator("button.replace-button").click();
+          assert.deepEqual(await page.locator(".option-button").evaluateAll(options => options.map(option => option.dataset.exerciseId)), position.allowedExerciseIds);
+          await page.keyboard.press("Escape");
+          await page.waitForFunction(() => !document.querySelector("#replacement-dialog").open);
+        }
+      }
+    }
+    console.log("PASS: all four original blocks, order, exact allowed menus, no duplicates and correct default load schemes");
+
+    await selectBlock("block1");
+    await row("block1-position1").locator("summary").click();
+    assert.equal(await row("block1-position1").locator(".set-row").count(), 5);
+    assert.deepEqual(await row("block1-position1").locator(".set-type").allTextContents(), ["Разминочный", "Разминочный", "Подводящий", "Рабочий", "Рабочий"]);
+    await row("block1-position3").locator("summary").click();
+    assert.equal(await row("block1-position3").locator(".set-row").count(), 3);
+    assert.equal(await row("block1-position3").locator(".set-weight").count(), 0);
+    await page.locator("#training-guide > summary").click();
+    assert.equal(await page.locator("#progression-steps li").count(), 5);
+    assert.match(await page.locator("#progression-steps").textContent(), /обоих рабочих подходах достигнуты 15/);
+    const rest = await page.locator("#rest-recommendation").textContent();
+    assert.equal(rest, await page.evaluate(() => window.WorkoutLoad.REST_RECOMMENDATION));
+    assert.ok(await page.locator("#rest-recommendation").isVisible());
+    console.log("PASS: expanded set purposes, core technical maximum, visible rest recommendation and double progression instructions");
+
+    await selectBlock("block2");
+    await row("block2-position1").locator("summary").click();
+    const before = await rowState();
+    await change("block2-position2", "ex035");
+    assert.equal(await row("block2-position2").locator(".load-summary").getAttribute("data-load-scheme"), "5×12");
+    assert.equal(await row("block2-position1").locator("details").getAttribute("open"), "");
+    const after = await rowState();
+    for (let i = 0; i < after.length; i++) if (i !== 1) assert.deepEqual(after[i], before[i]);
+    await row("block2-position2").locator("summary").click();
+    assert.match(await row("block2-position2").locator(".load-instruction").textContent(), /с высокой опоры или с колен/);
+    await assertUnique();
+    await page.reload();
+    assert.equal(await row("block2-position2").getAttribute("data-exercise-id"), "ex035");
+    assert.equal(await row("block2-position2").locator(".load-badge").textContent(), "5×12");
+    await change("block2-position2", "ex031");
+    assert.equal(await row("block2-position2").locator(".load-badge").textContent(), "2+1+2");
+    console.log("PASS: replacement recomputes load, preserves other rows and expanded details, reload restores both choice and derived scheme");
+
+    // Seed the exact pre-v1.1 storage format, without load fields.
+    const oldSave = {
+      version: 1, activeBlockId: "block2",
+      blocks: Object.fromEntries(defaults.map((ids, i) => [`block${i + 1}`, Object.fromEntries(ids.map((id, j) => [`block${i + 1}-position${j + 1}`, id]))]))
+    };
+    oldSave.blocks.block2["block2-position2"] = "ex035";
+    oldSave.blocks.block1["block1-position1"] = "ex003";
+    await page.evaluate(([key, saved]) => localStorage.setItem(key, JSON.stringify(saved)), [storageKey, oldSave]);
+    await page.reload();
+    assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storageKey), oldSave);
+    assert.equal(await row("block2-position2").locator(".load-badge").textContent(), "5×12");
+    await selectBlock("block1");
+    assert.equal(await row("block1-position1").getAttribute("data-exercise-id"), "ex003");
+    await page.locator("#reset-workout").click();
+    assert.deepEqual((await rowState()).map(item => item.id), defaults[0]);
+    await selectBlock("block2");
+    assert.equal(await row("block2-position2").getAttribute("data-exercise-id"), "ex035");
+    await page.locator("#reset-workout").click();
+    assert.deepEqual((await rowState()).map(item => item.scheme), defaultSchemes[1]);
+    console.log("PASS: existing v1 localStorage is unchanged in format, old choices remain compatible, reset affects only its block");
+
+    for (const width of [320, 375, 390, 430, 580, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const template of templates) {
+        await selectBlock(template.id);
+        await page.locator(".load-details, #training-guide").evaluateAll(details => details.forEach(item => { item.open = true; }));
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `page overflow: ${width}, ${template.id}`);
+        assert.equal(await page.locator(".set-list").evaluateAll(lists => lists.some(list => list.scrollWidth > list.clientWidth)), false, `set list overflow: ${width}`);
+        await assertUnique();
+        await row(template.positions[0].positionId).locator("button.replace-button").click();
+        assert.equal(await page.locator("#replacement-dialog").evaluate(dialog => dialog.scrollWidth > dialog.clientWidth), false);
+        await page.locator("#close-dialog").click();
+      }
+    }
+    await selectBlock("block3");
+    await row("block3-position4").locator("select").selectOption("ex016");
+    assert.equal(await row("block3-position4").getAttribute("data-exercise-id"), "ex016");
+    assert.equal(await row("block3-position4").locator(".load-badge").textContent(), "2+2");
+    await page.reload();
+    assert.equal(await row("block3-position4").getAttribute("data-exercise-id"), "ex016");
+    assert.equal(await row("block3-position4").locator(".load-badge").textContent(), "2+2");
+    console.log("PASS: no horizontal overflow with every disclosure expanded in all four blocks at 8 widths, 320–1440; leg curl save and scheme");
+
+    await selectBlock("block1");
+    await page.locator("#tab-block1").focus();
+    await page.keyboard.press("ArrowRight");
+    assert.equal(await page.locator('[role="tab"][aria-selected="true"]').getAttribute("id"), "tab-block2");
+    await page.keyboard.press("Home");
+    const summary = row("block1-position1").locator("summary");
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    assert.ok(await row("block1-position1").locator("details").evaluate(details => details.open));
+    console.log("PASS: keyboard navigation and native accessible disclosures");
+
+    if (screenshots) {
+      fs.mkdirSync(screenshots, { recursive: true });
+      await page.setViewportSize({ width: 1440, height: 1100 });
+      await row("block1-position1").locator("details").evaluate(details => { details.open = false; });
+      await page.locator("#training-guide").evaluate(details => { details.open = false; });
+      await page.screenshot({ path: path.join(screenshots, "desktop.png"), fullPage: true });
+    }
+
+    const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+    const mobile = await mobileContext.newPage();
+    mobile.on("pageerror", error => errors.push(error.message));
+    await mobile.goto(url);
+    await mobile.locator('.exercise-row[data-position-id="block1-position1"] summary').tap();
+    assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    if (screenshots) await mobile.screenshot({ path: path.join(screenshots, "mobile-expanded.png"), fullPage: true });
+    await mobile.locator("#tab-block4").tap();
+    assert.equal(await mobile.locator('.exercise-row[data-position-id="block4-position1"] .load-badge').textContent(), "5×12");
+    await mobileContext.close();
+    console.log("PASS: touch-enabled mobile context can expand set instructions and switch workouts");
+
+    // Simulate unclassifiable exercise data through the prescription boundary.
+    await page.evaluate(() => {
+      const original = window.WorkoutLoad;
+      window.WorkoutLoad = {
+        ...original,
+        getPrescription(exercise) { return original.getPrescription(exercise.id === "ex001" ? { ...exercise, role: "Неизвестно" } : exercise); }
+      };
+    });
+    await selectBlock("block1");
+    assert.match(await row("block1-position1").locator(".load-error").textContent(), /ex001.*неизвестная роль/);
+    assert.equal(await row("block1-position1").locator(".load-summary").count(), 0);
+    assert.equal(await page.locator(".load-summary").count(), 5);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(thirdPartyRequests, []);
+    console.log("PASS: readable per-exercise diagnostic without a random scheme; no JS errors or third-party requests");
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });
