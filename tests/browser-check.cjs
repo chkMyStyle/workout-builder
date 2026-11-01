@@ -211,6 +211,11 @@ const defaultSchemes = [
       await page.setViewportSize({ width, height: 844 });
       for (const template of templates) {
         await selectBlock(template.id);
+        const tabMetrics = await page.locator('[role="tab"]').evaluateAll(tabs => tabs.map(tab => ({
+          left: tab.getBoundingClientRect().left, right: tab.getBoundingClientRect().right,
+          height: tab.getBoundingClientRect().height, overflow: tab.scrollWidth > tab.clientWidth
+        })));
+        assert.ok(tabMetrics.every(tab => tab.left >= 0 && tab.right <= width && tab.height >= 44 && !tab.overflow), `tabs must remain readable and accessible at ${width}px`);
         if (template.id === "block1" && await row("block1-position3").getAttribute("data-exercise-id") !== "ex060") await change("block1-position3", "ex060");
         if (template.id === "block3" && await row("block3-position5").getAttribute("data-exercise-id") !== "ex030") await change("block3-position5", "ex030");
         await page.locator(".load-details, #training-guide").evaluateAll(details => details.forEach(item => { item.open = true; }));

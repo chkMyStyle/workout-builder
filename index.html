@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f6f0">
+  <meta name="theme-color" content="#F1F2F4">
   <meta name="description" content="Четыре готовые силовые тренировки. Выбирайте разрешённые замены и сохраняйте свой вариант на устройстве.">
   <title>Конструктор тренировок</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23252c26'/%3E%3Cpath d='M10 16v8m5-12v16m10-16v16m5-12v8M15 20h10' fill='none' stroke='%23d5ef79' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23202328'/%3E%3Cpath d='M10 16v8m5-12v16m10-16v16m5-12v8M15 20h10' fill='none' stroke='%23FF6B2C' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <script src="exercises.js" defer></script>
   <script src="templates.js" defer></script>
   <script src="training-load.js" defer></script>
@@ -27,22 +27,19 @@
 
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#icon-dumbbell"/></svg></span><span>СИЛА<span class="brand-dot">.</span></span><span class="brand-label">Личная программа</span></div>
+      <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#icon-dumbbell"/></svg></span><span>СИЛА<span class="brand-dot">.</span></span></div>
       <span class="offline-badge"><span class="status-dot"></span>Работает офлайн</span>
     </header>
 
     <main>
       <section class="page-intro" aria-labelledby="page-title">
-        <div><p class="eyebrow">ВАШ ТРЕНИРОВОЧНЫЙ ЦИКЛ</p><h1 id="page-title">Конструктор тренировок<span class="title-dot">.</span></h1><p class="intro-text">Готовая структура. Упражнения под вас.</p></div>
-        <div class="cycle-label"><span class="cycle-numbers">01 <span>→</span> 04 <svg class="icon" aria-hidden="true"><use href="#icon-reset"/></svg></span><span>Четыре блока по кругу</span></div>
+        <h1 id="page-title">Конструктор тренировок</h1>
       </section>
 
       <nav id="block-tabs" class="block-tabs" role="tablist" aria-label="Тренировочные блоки"></nav>
 
       <div class="workspace">
         <section id="workout-panel" class="workout-panel" role="tabpanel" tabindex="0" aria-labelledby="tab-block1">
-          <div class="workout-heading"><div><p id="block-label" class="eyebrow"></p><h2 id="workout-title"></h2><p id="workout-focus" class="focus-line"></p></div><span class="exercise-count"><strong>6</strong> упражнений</span></div>
-          <div class="list-heading"><span>ПОРЯДОК УПРАЖНЕНИЙ</span><span id="change-count"></span></div>
           <ol id="exercise-list" class="exercise-list" aria-label="Упражнения выбранного блока"></ol>
           <div class="workout-actions"><span id="save-status" class="save-status" role="status"></span><button id="reset-workout" class="reset-button" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-reset"/></svg>Сбросить тренировку</button></div>
           <p id="storage-warning" class="storage-warning" role="status" hidden></p>
@@ -65,20 +62,9 @@
           </section>
         </section>
 
-        <aside class="sidebar" aria-label="О тренировочном цикле">
-          <section class="cycle-card">
-            <div class="card-topline"><span class="eyebrow">ЦИКЛ ИЗ 4 БЛОКОВ</span><svg class="icon" aria-hidden="true"><use href="#icon-dumbbell"/></svg></div>
-            <h2>Основа есть.<br> Выбор за вами.</h2>
-            <p>Меняйте упражнения под доступное оборудование, сохраняя структуру программы.</p>
-            <div id="cycle-track" class="cycle-track" aria-hidden="true"></div>
-            <div class="cycle-card-footer"><span id="cycle-caption"></span><svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></div>
-          </section>
-          <section class="rules-card"><span class="rule-icon"><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg></span><h3>Замены в рамках программы</h3><p>Для каждой позиции — свой набор альтернатив. Порядок и остальные упражнения сохраняются.</p><div class="rule-divider"></div><span class="rule-icon small"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg></span><p class="rule-footnote">Ваш выбор сохраняется на этом устройстве автоматически.</p></section>
-        </aside>
       </div>
     </main>
 
-    <footer class="page-footer"><span>Ваша программа. Ваш ритм.</span><span>4 блока <span class="footer-dot">·</span> 6 упражнений в каждом</span></footer>
   </div>
 
   <dialog id="replacement-dialog" class="replacement-dialog" aria-labelledby="replacement-title" aria-describedby="replacement-description">
