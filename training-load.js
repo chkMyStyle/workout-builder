@@ -1,9 +1,9 @@
-// Схемы нагрузки v1.1. Производные данные: библиотека и сохранения не изменяются.
+// Схемы нагрузки v1.1. Производные данные: сохранения не изменяются.
 (function () {
   "use strict";
 
   const PULLUP_IDS = Object.freeze(["ex019", "ex020", "ex021", "ex022"]);
-  const PUSHUP_IDS = Object.freeze(["ex035", "ex036", "ex037", "ex038"]);
+  const PUSHUP_IDS = Object.freeze(["ex035", "ex036", "ex037", "ex038", "ex059"]);
   const BODYWEIGHT_IDS = Object.freeze([...PULLUP_IDS, ...PUSHUP_IDS]);
   const REST_RECOMMENDATION = "Отдых 60–120 секунд. При необходимости отдыхайте дольше, пока не восстановятся дыхание и готовность к следующему подходу";
   const WORKING_WEIGHT_INSTRUCTION = "Подберите рабочий вес, с которым можете выполнить 12 качественных повторений с запасом примерно 1–2 повторения. В обоих рабочих подходах используйте одинаковый вес.";
@@ -47,6 +47,14 @@
     type: "С собственным весом", repetitions: "12", weight: null
   })), "Если 12 повторений пока не получается, используйте облегчённую вариацию отжиманий: с высокой опоры или с колен.");
 
+  const dips = prescription("bodyweight", "5×12", "12 повторений", Array.from({ length: 5 }, () => ({
+    type: "С собственным весом", repetitions: "12", weight: null
+  })), "Если 12 повторений на брусьях выполнить невозможно, можно использовать гравитрон с поддержкой для отжиманий на брусьях, если оборудование позволяет, или выбрать обратные отжимания от скамьи как альтернативное упражнение, если оно выполняется без боли и с контролируемой амплитудой.");
+
+  const reverseBenchPushup = prescription("bodyweight", "5×12", "12 повторений", Array.from({ length: 5 }, () => ({
+    type: "С собственным весом", repetitions: "12", weight: null
+  })), "Если 12 качественных повторений выполнить невозможно, используйте более лёгкое положение ног или другой доступный способ облегчения. Не выполняйте упражнение через боль. Не опускайтесь чрезмерно глубоко; при дискомфорте в передней части плеча используйте другую альтернативу.");
+
   const core = prescription("core", "3×макс.", "до технического максимума", Array.from({ length: 3 }, () => ({
     type: "До технического максимума", repetitions: "макс.", weight: null
   })), TECHNICAL_MAXIMUM_INSTRUCTION);
@@ -67,6 +75,8 @@
     // The priority is intentional: muscle group, explicit bodyweight IDs, role.
     if (exercise.category === "Мышцы корпуса") return core;
     if (PULLUP_IDS.includes(exercise.id)) return pullup;
+    if (exercise.id === "ex038") return dips;
+    if (exercise.id === "ex059") return reverseBenchPushup;
     if (PUSHUP_IDS.includes(exercise.id)) return pushup;
     if (exercise.role === "Основное") return main;
     if (exercise.role === "Вспомогательное") return accessory;

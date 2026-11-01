@@ -35,6 +35,15 @@ const defaultSchemes = [
     });
     await page.goto(url);
     const templates = await page.evaluate(() => window.WorkoutTemplates);
+    const libraryInfo = await page.evaluate(() => ({
+      count: window.WorkoutData.exercises.length,
+      newExercise: window.WorkoutData.exerciseById.ex059,
+      newScheme: window.WorkoutLoad.getPrescription(window.WorkoutData.exerciseById.ex059).scheme
+    }));
+    assert.equal(libraryInfo.count, 59);
+    assert.equal(libraryInfo.newExercise.name, "Обратные отжимания от скамьи");
+    assert.deepEqual(libraryInfo.newExercise.alternativeForExerciseIds, ["ex038"]);
+    assert.equal(libraryInfo.newScheme, "5×12");
     const storageKey = "strength-workout-builder:v1";
     const row = id => page.locator(`.exercise-row[data-position-id="${id}"]`);
     const selectBlock = id => page.locator(`#tab-${id}`).click();
@@ -88,6 +97,9 @@ const defaultSchemes = [
     const rest = await page.locator("#rest-recommendation").textContent();
     assert.equal(rest, await page.evaluate(() => window.WorkoutLoad.REST_RECOMMENDATION));
     assert.ok(await page.locator("#rest-recommendation").isVisible());
+    const dipsGuide = page.locator(".guide-content p").filter({ hasText: /^Для брусьев:/ });
+    assert.match(await dipsGuide.textContent(), /гравитрон с поддержкой для отжиманий на брусьях/);
+    assert.doesNotMatch(await dipsGuide.textContent(), /колен|высок.*опор/);
     console.log("PASS: expanded set purposes, core technical maximum, visible rest recommendation and double progression instructions");
 
     await selectBlock("block2");
@@ -181,6 +193,44 @@ const defaultSchemes = [
     assert.equal(await mobile.locator('.exercise-row[data-position-id="block4-position1"] .load-badge').textContent(), "5×12");
     await mobileContext.close();
     console.log("PASS: touch-enabled mobile context can expand set instructions and switch workouts");
+
+    // Dips are absent from the approved blocks. Use an isolated in-memory fixture
+    // to check their future card rendering, without editing production templates.
+    const fixtureContext = await browser.newContext({ viewport: { width: 320, height: 844 }, isMobile: true, hasTouch: true });
+    await fixtureContext.addInitScript(() => {
+      let fixtures;
+      Object.defineProperty(window, "WorkoutTemplates", {
+        configurable: true,
+        get() { return fixtures; },
+        set(templates) {
+          fixtures = templates.map(template => ({
+            ...template, positions: template.positions.map(position => ({ ...position, allowedExerciseIds: [...position.allowedExerciseIds] }))
+          }));
+          fixtures[0].positions[0] = {
+            ...fixtures[0].positions[0], defaultExerciseId: "ex038", allowedExerciseIds: ["ex038", "ex059"]
+          };
+        }
+      });
+    });
+    const fixture = await fixtureContext.newPage();
+    fixture.on("pageerror", error => errors.push(error.message));
+    await fixture.goto(url);
+    const fixtureRow = fixture.locator('.exercise-row[data-position-id="block1-position1"]');
+    await fixtureRow.locator("summary").tap();
+    assert.equal(await fixtureRow.locator(".load-badge").textContent(), "5×12");
+    assert.match(await fixtureRow.locator(".load-instruction").textContent(), /гравитрон с поддержкой для отжиманий на брусьях/);
+    assert.match(await fixtureRow.locator(".load-instruction").textContent(), /без боли и с контролируемой амплитудой/);
+    assert.doesNotMatch(await fixtureRow.locator(".load-instruction").textContent(), /колен|высок.*опор/);
+    await fixtureRow.locator("button.replace-button").tap();
+    await fixture.locator('.option-button[data-exercise-id="ex059"]').tap();
+    assert.equal(await fixtureRow.getAttribute("data-exercise-id"), "ex059");
+    assert.equal(await fixtureRow.locator(".load-badge").textContent(), "5×12");
+    assert.match(await fixtureRow.locator(".load-instruction").textContent(), /более лёгкое положение ног/);
+    assert.match(await fixtureRow.locator(".load-instruction").textContent(), /Не выполняйте упражнение через боль/);
+    assert.equal(await fixture.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    if (screenshots) await fixtureRow.screenshot({ path: path.join(screenshots, "reverse-bench-pushup-fixture.png") });
+    await fixtureContext.close();
+    console.log("PASS: isolated fixture renders distinct dip guidance and reverse bench pushup 5×12 at 320 px without changing any approved position");
 
     // Simulate unclassifiable exercise data through the prescription boundary.
     await page.evaluate(() => {

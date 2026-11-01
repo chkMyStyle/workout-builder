@@ -1,4 +1,4 @@
-// Каноническая библиотека из training-data.md, версия 1.0.
+// Библиотека из training-data.md v1.0 и согласованное дополнение ex059 для v1.1.
 // Обычный script: приложение работает и через file:// без сервера.
 (function () {
   "use strict";
@@ -524,9 +524,25 @@
     "secondaryMuscles": "Мышцы хвата",
     "movement": "Сгибание бедра, при подъёме таза — сгибание позвоночника",
     "role": "Вспомогательное"
+  },
+  {
+    "id": "ex059",
+    "name": "Обратные отжимания от скамьи",
+    "category": "Трицепсы",
+    "primaryMuscles": "Трицепсы",
+    "secondaryMuscles": "Передние дельты, большая грудная мышца",
+    "movement": "Жим с собственным весом, разгибание локтя",
+    "role": "Вспомогательное",
+    "description": "Руки расположены на скамье или устойчивой опоре позади туловища, ноги находятся перед человеком. Выполняются сгибание и разгибание рук с контролируемой амплитудой.",
+    "warning": "Не опускаться чрезмерно глубоко, избегать болезненных ощущений в передней части плеча. При дискомфорте использовать другую альтернативу.",
+    "alternativeForExerciseIds": ["ex038"]
   }
 ];
-  exercises.forEach(Object.freeze);
+  // Информационная связь альтернатив не расширяет разрешённые замены позиций.
+  exercises.forEach(exercise => {
+    if (exercise.alternativeForExerciseIds) Object.freeze(exercise.alternativeForExerciseIds);
+    Object.freeze(exercise);
+  });
   window.WorkoutData = Object.freeze({
     exercises: Object.freeze(exercises),
     exerciseById: Object.freeze(Object.fromEntries(exercises.map(exercise => [exercise.id, exercise])))

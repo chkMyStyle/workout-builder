@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const crypto = require("node:crypto");
 
 const context = vm.createContext({ window: {} });
 for (const file of ["exercises.js", "templates.js", "training-load.js", "app.js"]) {
@@ -53,16 +54,45 @@ test("all four canonical pullup IDs get 5×12 and assistance preserves the grip"
   }
 });
 
-test("all pushup IDs, including bench pushups and dips, get 5×12 and lighter-variation guidance", () => {
-  assert.deepEqual(plain(load.PUSHUP_IDS), ["ex035", "ex036", "ex037", "ex038"]);
-  assert.equal(data.exerciseById.ex038.name, "Отжимания на брусьях");
-  for (const id of load.PUSHUP_IDS) {
+test("ordinary pushups retain their exact previous 5×12 prescription and assistance guidance", () => {
+  assert.deepEqual(plain(load.PUSHUP_IDS), ["ex035", "ex036", "ex037", "ex038", "ex059"]);
+  for (const id of ["ex035", "ex036", "ex037"]) {
     const result = get(id);
     assert.equal(result.scheme, "5×12");
     assert.equal(result.setCount, 5);
     assert.ok(result.sets.every(set => set.repetitions === "12" && set.type === "С собственным весом"));
-    assert.match(result.instruction, /с высокой опоры или с колен/);
+    assert.equal(result.instruction, "Если 12 повторений пока не получается, используйте облегчённую вариацию отжиманий: с высокой опоры или с колен.");
   }
+});
+
+test("dips have a distinct 5×12 recommendation with supported dips or pain-free reverse bench pushups", () => {
+  const result = get("ex038");
+  assert.equal(result.scheme, "5×12");
+  assert.equal(result.setCount, 5);
+  assert.match(result.instruction, /гравитрон с поддержкой для отжиманий на брусьях, если оборудование позволяет/);
+  assert.match(result.instruction, /обратные отжимания от скамьи/);
+  assert.match(result.instruction, /без боли и с контролируемой амплитудой/);
+  assert.doesNotMatch(result.instruction, /колен|высок.*опор/);
+});
+
+test("reverse bench pushups override the accessory role and get 5×12 with safe assistance guidance", () => {
+  const result = get("ex059");
+  assert.ok(load.BODYWEIGHT_IDS.includes("ex059"));
+  assert.equal(new Set(load.BODYWEIGHT_IDS).size, 9);
+  assert.equal(result.scheme, "5×12");
+  assert.equal(result.setCount, 5);
+  assert.ok(result.sets.every(set => set.repetitions === "12" && set.type === "С собственным весом" && set.weight === null));
+  assert.match(result.instruction, /более лёгкое положение ног/);
+  assert.match(result.instruction, /другой доступный способ облегчения/);
+  assert.match(result.instruction, /Не выполняйте упражнение через боль/);
+  assert.match(result.instruction, /Не опускайтесь чрезмерно глубоко/);
+});
+
+test("prescriptions for all other original exercises are exactly unchanged", () => {
+  const originals = data.exercises.filter(exercise => !["ex038", "ex059"].includes(exercise.id));
+  const values = originals.map(exercise => [exercise.id, load.getPrescription(exercise)]);
+  const digest = crypto.createHash("sha256").update(JSON.stringify(values)).digest("hex");
+  assert.equal(digest, "b9cd73abd96003bc6bc7df21f316921b2369bdb6fe2e432a28611cfead0445f8");
 });
 
 test("bodyweight detection uses IDs and has priority over the role", () => {
@@ -88,7 +118,7 @@ test("core group takes priority over both the main role and a bodyweight ID", ()
   assert.equal(load.getPrescription({ ...data.exerciseById.ex019, category: "Мышцы корпуса" }).scheme, "3×макс.");
 });
 
-test("every one of the 58 exercises has a valid immutable prescription and the exact rest recommendation", () => {
+test("every one of the 59 exercises has a valid immutable prescription and the exact rest recommendation", () => {
   const counts = {};
   for (const exercise of data.exercises) {
     const result = get(exercise.id);
@@ -98,7 +128,7 @@ test("every one of the 58 exercises has a valid immutable prescription and the e
     assert.ok(result.sets.every(Object.isFrozen));
     counts[result.kind] = (counts[result.kind] || 0) + 1;
   }
-  assert.deepEqual(counts, { main: 29, accessory: 17, bodyweight: 8, core: 4 });
+  assert.deepEqual(counts, { main: 29, accessory: 17, bodyweight: 9, core: 4 });
 });
 
 test("incomplete metadata produces a readable diagnostic instead of a fallback scheme", () => {
