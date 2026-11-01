@@ -10,6 +10,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23252c26'/%3E%3Cpath d='M10 16v8m5-12v16m10-16v16m5-12v8M15 20h10' fill='none' stroke='%23d5ef79' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
   <script src="exercises.js" defer></script>
   <script src="templates.js" defer></script>
+  <script src="training-load.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -45,6 +46,23 @@
           <ol id="exercise-list" class="exercise-list" aria-label="Упражнения выбранного блока"></ol>
           <div class="workout-actions"><span id="save-status" class="save-status" role="status"></span><button id="reset-workout" class="reset-button" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-reset"/></svg>Сбросить тренировку</button></div>
           <p id="storage-warning" class="storage-warning" role="status" hidden></p>
+          <section class="training-instructions" aria-label="Отдых и правила выполнения">
+            <div class="rest-heading"><span class="eyebrow">ОТДЫХ МЕЖДУ ПОДХОДАМИ</span><span>Для всех упражнений</span></div>
+            <p id="rest-recommendation" class="rest-recommendation">Отдых 60–120 секунд. При необходимости отдыхайте дольше, пока не восстановятся дыхание и готовность к следующему подходу</p>
+            <details id="training-guide" class="training-guide">
+              <summary><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg><span>Как выполнять и прогрессировать</span><svg class="icon details-arrow" aria-hidden="true"><use href="#icon-arrow"/></svg></summary>
+              <div class="guide-content">
+                <h3>Подходы и нагрузка</h3>
+                <p><strong>2+1+2:</strong> два разминочных, один подводящий и два рабочих подхода. <strong>2+2:</strong> два разминочных и два рабочих. Разминочные и подводящий — по 12 повторений, рабочие — по 12–15. Подробный порядок и назначение веса — в карточке упражнения.</p>
+                <h3>Двойная прогрессия · с отягощением</h3>
+                <ol id="progression-steps" class="progression-steps"></ol>
+                <h3>Собственный вес и пресс</h3>
+                <p>Подтягивания и все варианты отжиманий, включая брусья и обратные отжимания от скамьи, — 5 подходов по 12 повторений. Если 12 повторений пока не получается, используйте облегчённую вариацию: для подтягиваний — гравитрон с тем же хватом; для обычных отжиманий — высокую опору или вариант с колен.</p>
+                <p>Для брусьев: если 12 повторений выполнить невозможно, можно использовать гравитрон с поддержкой для отжиманий на брусьях, если оборудование позволяет, или выбрать обратные отжимания от скамьи, если они выполняются без боли и с контролируемой амплитудой. Для обратных отжиманий используйте более лёгкое положение ног или другой доступный способ облегчения; не выполняйте через боль и не опускайтесь чрезмерно глубоко.</p>
+                <p>Пресс — 3 подхода до технического максимума: остановитесь, когда следующее повторение нельзя выполнить с правильной техникой. Разминочных и подводящих подходов нет.</p>
+              </div>
+            </details>
+          </section>
         </section>
 
         <aside class="sidebar" aria-label="О тренировочном цикле">

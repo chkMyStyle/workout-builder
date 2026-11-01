@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const crypto = require("node:crypto");
 
 const context = vm.createContext({ window: {} });
 for (const file of ["exercises.js", "templates.js", "app.js"]) {
@@ -36,16 +37,43 @@ const approved = [
   ]
 ];
 
-test("58 unique canonical exercises and complete classifications", () => {
-  assert.equal(data.exercises.length, 58);
-  assert.equal(new Set(data.exercises.map(exercise => exercise.id)).size, 58);
+test("59 unique exercises and complete classifications", () => {
+  assert.equal(data.exercises.length, 59);
+  assert.equal(new Set(data.exercises.map(exercise => exercise.id)).size, 59);
   assert.equal(data.exercises.some(exercise => /ягодичный мост|гравитрон|классическая становая/i.test(exercise.name)), false);
   const counts = {};
   for (const exercise of data.exercises) {
     for (const key of ["id", "name", "category", "primaryMuscles", "secondaryMuscles", "movement", "role"]) assert.ok(exercise[key]);
     counts[exercise.category] = (counts[exercise.category] || 0) + 1;
   }
-  assert.deepEqual(Object.values(counts), [18, 12, 8, 8, 4, 4, 4]);
+  assert.deepEqual(Object.values(counts), [18, 12, 8, 8, 4, 5, 4]);
+});
+
+test("all original 58 exercise records exactly preserve the pre-v1.1 library", () => {
+  const originals = data.exercises.filter(exercise => exercise.id !== "ex059");
+  const digest = crypto.createHash("sha256").update(JSON.stringify(originals)).digest("hex");
+  assert.equal(originals.length, 58);
+  assert.equal(digest, "00b6ce6614d9a5d2358c67795bb2707bba2499b54e97ff57a65a42dd9451eb1c");
+});
+
+test("reverse bench pushups have the requested classification, description, warning and informational link to dips", () => {
+  assert.deepEqual(plain(data.exerciseById.ex059), {
+    id: "ex059", name: "Обратные отжимания от скамьи", category: "Трицепсы",
+    primaryMuscles: "Трицепсы", secondaryMuscles: "Передние дельты, большая грудная мышца",
+    movement: "Жим с собственным весом, разгибание локтя", role: "Вспомогательное",
+    description: "Руки расположены на скамье или устойчивой опоре позади туловища, ноги находятся перед человеком. Выполняются сгибание и разгибание рук с контролируемой амплитудой.",
+    warning: "Не опускаться чрезмерно глубоко, избегать болезненных ощущений в передней части плеча. При дискомфорте использовать другую альтернативу.",
+    alternativeForExerciseIds: ["ex038"]
+  });
+  assert.ok(Object.isFrozen(data.exerciseById.ex059.alternativeForExerciseIds));
+});
+
+test("informational dip alternatives do not expand the approved training-position permissions", () => {
+  for (const template of templates) for (const position of template.positions) {
+    assert.ok(!position.allowedExerciseIds.includes("ex038"));
+    assert.ok(!position.allowedExerciseIds.includes("ex059"));
+    assert.equal(core.replaceExercise(template, core.createDefaults(template), position.positionId, "ex059"), null);
+  }
 });
 
 test("all 24 positions match the complete approved default and substitution matrix", () => {

@@ -134,7 +134,26 @@
     }).join("");
   }
 
-  function renderExercise(template, selection, position, index) {
+  function renderLoad(exercise, expanded) {
+    try {
+      if (!window.WorkoutLoad) throw new Error("Не загружен файл training-load.js. Проверьте, что все файлы приложения находятся рядом.");
+      const load = window.WorkoutLoad.getPrescription(exercise);
+      const setWord = load.setCount === 3 ? "подхода" : "подходов";
+      const sets = load.sets.map((set, index) => `<li class="set-row">
+        <span class="set-number" aria-hidden="true">${index + 1}</span>
+        <span class="set-purpose"><span class="set-type">${escapeHtml(set.type)}</span>${set.weight ? `<span class="set-weight">Вес: ${escapeHtml(set.weight)}</span>` : ""}</span>
+        <span class="set-repetitions">${escapeHtml(set.repetitions)}<span>${load.kind === "core" ? "" : "повт."}</span></span></li>`).join("");
+      return `<div class="load-summary" data-load-kind="${load.kind}" data-load-scheme="${load.scheme}">
+        <span class="load-badge">${load.scheme}</span><span>${load.setCount} ${setWord}</span><span>${escapeHtml(load.summaryRepetitions)}</span></div>
+        <details class="load-details"${expanded ? " open" : ""}><summary><span>Подробнее о подходах</span>${icon("arrow", "details-arrow")}</summary>
+          <div class="load-details-content"><ol class="set-list" aria-label="Подходы: ${escapeHtml(exercise.name)}">${sets}</ol><p class="load-instruction">${escapeHtml(load.instruction)}</p></div>
+        </details>`;
+    } catch (error) {
+      return `<p class="load-error" role="alert">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  function renderExercise(template, selection, position, index, expanded) {
     const exercise = exerciseById[selection[position.positionId]];
     const changed = exercise.id !== position.defaultExerciseId;
     const isLegCurl = template.id === "block3" && position.positionId === "block3-position4";
@@ -147,11 +166,9 @@
     } else {
       control = `<span class="fixed-label" title="Фиксированная позиция — замены не предусмотрены">${icon("lock")}<span>Без замены</span></span>`;
     }
-    const pullupNote = ["ex019", "ex020", "ex021", "ex022"].includes(exercise.id)
-      ? '<p class="exercise-note">Можно выполнять в гравитроне с тем же хватом.</p>' : "";
     return `<li class="exercise-row${isLegCurl ? " has-select" : ""}" data-position-id="${position.positionId}" data-exercise-id="${exercise.id}">
       <span class="exercise-number" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-      <div class="exercise-body">${changed ? '<span class="changed-label">Замена</span>' : ""}<h3 class="exercise-title">${escapeHtml(exercise.name)}</h3><p class="muscles">${escapeHtml(exercise.primaryMuscles)}</p>${pullupNote}</div>
+      <div class="exercise-body">${changed ? '<span class="changed-label">Замена</span>' : ""}<h3 class="exercise-title">${escapeHtml(exercise.name)}</h3><p class="muscles">${escapeHtml(exercise.primaryMuscles)}</p>${renderLoad(exercise, expanded)}</div>
       <div class="exercise-control">${control}</div></li>`;
   }
 
@@ -163,7 +180,8 @@
     byId("block-label").textContent = `ТРЕНИРОВКА ${String(template.number).padStart(2, "0")} / 04`;
     byId("workout-title").textContent = template.name;
     byId("workout-focus").innerHTML = `Акцент: <strong>${escapeHtml(template.focus)}</strong>`;
-    list.innerHTML = template.positions.map((position, index) => renderExercise(template, selection, position, index)).join("");
+    const expandedPositions = new Set([...list.querySelectorAll(".load-details[open]")].map(details => details.closest(".exercise-row").dataset.positionId));
+    list.innerHTML = template.positions.map((position, index) => renderExercise(template, selection, position, index, expandedPositions.has(position.positionId))).join("");
     const changeCount = template.positions.filter(position => selection[position.positionId] !== position.defaultExerciseId).length;
     byId("change-count").textContent = changeCount === 0 ? "Исходный состав" : `${changeCount} ${changeCount === 1 ? "замена" : changeCount < 5 ? "замены" : "замен"}`;
     byId("reset-workout").disabled = changeCount === 0;
@@ -280,5 +298,6 @@
   });
 
   persist();
+  if (window.WorkoutLoad) byId("progression-steps").innerHTML = window.WorkoutLoad.PROGRESSION_STEPS.map(step => `<li>${escapeHtml(step)}</li>`).join("");
   render();
 })();
