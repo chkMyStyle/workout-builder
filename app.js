@@ -142,7 +142,7 @@
       const sets = load.sets.map((set, index) => `<li class="set-row">
         <span class="set-number" aria-hidden="true">${index + 1}</span>
         <span class="set-purpose"><span class="set-type">${escapeHtml(set.type)}</span>${set.weight ? `<span class="set-weight">Вес: ${escapeHtml(set.weight)}</span>` : ""}</span>
-        <span class="set-repetitions">${escapeHtml(set.repetitions)}<span>${load.kind === "core" ? "" : "повт."}</span></span></li>`).join("");
+        <span class="set-repetitions">${escapeHtml(set.repetitions)}<span>${load.kind === "core" ? "" : "повт."}</span></span>${set.repetitionQualifier ? `<span class="set-side">${escapeHtml(set.repetitionQualifier)}</span>` : ""}</li>`).join("");
       return `<div class="load-summary" data-load-kind="${load.kind}" data-load-scheme="${load.scheme}">
         <span class="load-badge">${load.scheme}</span><span>${load.setCount} ${setWord}</span><span>${escapeHtml(load.summaryRepetitions)}</span></div>
         <details class="load-details"${expanded ? " open" : ""}><summary><span>Подробнее о подходах</span>${icon("arrow", "details-arrow")}</summary>

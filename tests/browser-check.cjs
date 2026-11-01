@@ -40,7 +40,7 @@ const defaultSchemes = [
       newExercise: window.WorkoutData.exerciseById.ex059,
       newScheme: window.WorkoutLoad.getPrescription(window.WorkoutData.exerciseById.ex059).scheme
     }));
-    assert.equal(libraryInfo.count, 59);
+    assert.equal(libraryInfo.count, 60);
     assert.equal(libraryInfo.newExercise.name, "Обратные отжимания от скамьи");
     assert.deepEqual(libraryInfo.newExercise.alternativeForExerciseIds, ["ex038"]);
     assert.equal(libraryInfo.newScheme, "5×12");
@@ -83,6 +83,44 @@ const defaultSchemes = [
       }
     }
     console.log("PASS: all four original blocks, order, exact allowed menus, no duplicates and correct default load schemes");
+
+    await selectBlock("block2");
+    const beforeUnilateral = await rowState();
+    await change("block2-position1", "ex025");
+    await row("block2-position1").locator("summary").click();
+    assert.match(await row("block2-position1").locator(".load-summary").textContent(), /на каждую сторону/);
+    assert.deepEqual(await row("block2-position1").locator(".set-side").allTextContents(), Array(5).fill("на каждую сторону"));
+    assert.ok(await row("block2-position1").locator(".set-side").first().isVisible());
+    const afterUnilateral = await rowState();
+    for (let i = 1; i < 6; i++) assert.deepEqual(afterUnilateral[i], beforeUnilateral[i]);
+    await page.reload();
+    assert.equal(await row("block2-position1").getAttribute("data-exercise-id"), "ex025");
+    await row("block2-position1").locator("summary").click();
+    assert.equal(await row("block2-position1").locator(".set-side").count(), 5);
+    await change("block2-position1", "ex024");
+    assert.equal(await row("block2-position1").locator(".set-side").count(), 0);
+    assert.doesNotMatch(await row("block2-position1").locator(".load-summary").textContent(), /на каждую сторону/);
+    console.log("PASS: per-side label appears in every set after replacement, survives reload, disappears on bilateral replacement and leaves other positions intact");
+
+    await selectBlock("block1");
+    await change("block1-position3", "ex060");
+    assert.equal(await row("block1-position3").locator(".exercise-title").textContent(), "Подъём прямых ног к перекладине");
+    assert.equal(await row("block1-position3").locator(".load-badge").textContent(), "3×макс.");
+    assert.equal(await row("block1-position3").locator(".set-row").count(), 3);
+    await page.reload();
+    assert.equal(await row("block1-position3").getAttribute("data-exercise-id"), "ex060");
+    await page.locator("#reset-workout").click();
+    await selectBlock("block3");
+    await change("block3-position5", "ex030");
+    assert.equal(await row("block3-position5").locator(".exercise-title").textContent(), "Тяга каната к лицу (Face Pull)");
+    assert.equal(await row("block3-position5").locator("button.replace-button").getAttribute("aria-label"), "Заменить: Тяга каната к лицу (Face Pull)");
+    await row("block3-position5").locator("button.replace-button").click();
+    assert.equal(await page.locator('.option-button[data-exercise-id="ex030"] .option-title').textContent(), "Тяга каната к лицу (Face Pull)");
+    await page.locator("#close-dialog").click();
+    await page.reload();
+    assert.equal(await row("block3-position5").locator(".exercise-title").textContent(), "Тяга каната к лицу (Face Pull)");
+    await page.locator("#reset-workout").click();
+    console.log("PASS: toes-to-bar is an allowed core replacement with 3×max, and Face Pull updates card, menu, accessible name and saved display");
 
     await selectBlock("block1");
     await row("block1-position1").locator("summary").click();
@@ -145,6 +183,8 @@ const defaultSchemes = [
       await page.setViewportSize({ width, height: 844 });
       for (const template of templates) {
         await selectBlock(template.id);
+        if (template.id === "block1" && await row("block1-position3").getAttribute("data-exercise-id") !== "ex060") await change("block1-position3", "ex060");
+        if (template.id === "block3" && await row("block3-position5").getAttribute("data-exercise-id") !== "ex030") await change("block3-position5", "ex030");
         await page.locator(".load-details, #training-guide").evaluateAll(details => details.forEach(item => { item.open = true; }));
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `page overflow: ${width}, ${template.id}`);
         assert.equal(await page.locator(".set-list").evaluateAll(lists => lists.some(list => list.scrollWidth > list.clientWidth)), false, `set list overflow: ${width}`);
@@ -189,6 +229,12 @@ const defaultSchemes = [
     await mobile.locator('.exercise-row[data-position-id="block1-position1"] summary').tap();
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     if (screenshots) await mobile.screenshot({ path: path.join(screenshots, "mobile-expanded.png"), fullPage: true });
+    await mobile.setViewportSize({ width: 320, height: 844 });
+    const unilateralMobileRow = mobile.locator('.exercise-row[data-position-id="block1-position6"]');
+    await unilateralMobileRow.locator("summary").tap();
+    assert.equal(await unilateralMobileRow.locator(".set-side").count(), 5);
+    assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    if (screenshots) await unilateralMobileRow.screenshot({ path: path.join(screenshots, "unilateral-mobile.png") });
     await mobile.locator("#tab-block4").tap();
     assert.equal(await mobile.locator('.exercise-row[data-position-id="block4-position1"] .load-badge').textContent(), "5×12");
     await mobileContext.close();
@@ -198,6 +244,16 @@ const defaultSchemes = [
     // to check their future card rendering, without editing production templates.
     const fixtureContext = await browser.newContext({ viewport: { width: 320, height: 844 }, isMobile: true, hasTouch: true });
     await fixtureContext.addInitScript(() => {
+      // A synthetic unilateral bodyweight variant tests the generic mode only.
+      let fixtureData;
+      Object.defineProperty(window, "WorkoutData", {
+        configurable: true,
+        get() { return fixtureData; },
+        set(data) {
+          const exercises = data.exercises.map(exercise => exercise.id === "ex038" ? { ...exercise, unilateral: true } : exercise);
+          fixtureData = { ...data, exercises, exerciseById: Object.fromEntries(exercises.map(exercise => [exercise.id, exercise])) };
+        }
+      });
       let fixtures;
       Object.defineProperty(window, "WorkoutTemplates", {
         configurable: true,
@@ -218,6 +274,7 @@ const defaultSchemes = [
     const fixtureRow = fixture.locator('.exercise-row[data-position-id="block1-position1"]');
     await fixtureRow.locator("summary").tap();
     assert.equal(await fixtureRow.locator(".load-badge").textContent(), "5×12");
+    assert.deepEqual(await fixtureRow.locator(".set-side").allTextContents(), Array(5).fill("на каждую сторону"));
     assert.match(await fixtureRow.locator(".load-instruction").textContent(), /гравитрон с поддержкой для отжиманий на брусьях/);
     assert.match(await fixtureRow.locator(".load-instruction").textContent(), /без боли и с контролируемой амплитудой/);
     assert.doesNotMatch(await fixtureRow.locator(".load-instruction").textContent(), /колен|высок.*опор/);
@@ -225,6 +282,7 @@ const defaultSchemes = [
     await fixture.locator('.option-button[data-exercise-id="ex059"]').tap();
     assert.equal(await fixtureRow.getAttribute("data-exercise-id"), "ex059");
     assert.equal(await fixtureRow.locator(".load-badge").textContent(), "5×12");
+    assert.equal(await fixtureRow.locator(".set-side").count(), 0);
     assert.match(await fixtureRow.locator(".load-instruction").textContent(), /более лёгкое положение ног/);
     assert.match(await fixtureRow.locator(".load-instruction").textContent(), /Не выполняйте упражнение через боль/);
     assert.equal(await fixture.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

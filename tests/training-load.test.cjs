@@ -89,8 +89,8 @@ test("reverse bench pushups override the accessory role and get 5×12 with safe 
 });
 
 test("prescriptions for all other original exercises are exactly unchanged", () => {
-  const originals = data.exercises.filter(exercise => !["ex038", "ex059"].includes(exercise.id));
-  const values = originals.map(exercise => [exercise.id, load.getPrescription(exercise)]);
+  const originals = data.exercises.filter(exercise => !["ex038", "ex059", "ex060"].includes(exercise.id));
+  const values = originals.map(exercise => [exercise.id, load.getPrescription({ ...exercise, unilateral: false })]);
   const digest = crypto.createHash("sha256").update(JSON.stringify(values)).digest("hex");
   assert.equal(digest, "b9cd73abd96003bc6bc7df21f316921b2369bdb6fe2e432a28611cfead0445f8");
 });
@@ -101,8 +101,8 @@ test("bodyweight detection uses IDs and has priority over the role", () => {
   assert.equal(load.getPrescription({ ...data.exerciseById.ex001, name: "Подтягивания" }).scheme, "2+1+2");
 });
 
-test("all four core exercises get three technical-maximum sets with no warmups", () => {
-  for (const id of ["ex055", "ex056", "ex057", "ex058"]) {
+test("all five core exercises including toes-to-bar get three technical-maximum sets with no warmups", () => {
+  for (const id of ["ex055", "ex056", "ex057", "ex058", "ex060"]) {
     const result = get(id);
     assert.equal(result.scheme, "3×макс.");
     assert.equal(result.setCount, 3);
@@ -118,7 +118,7 @@ test("core group takes priority over both the main role and a bodyweight ID", ()
   assert.equal(load.getPrescription({ ...data.exerciseById.ex019, category: "Мышцы корпуса" }).scheme, "3×макс.");
 });
 
-test("every one of the 59 exercises has a valid immutable prescription and the exact rest recommendation", () => {
+test("every one of the 60 exercises has a valid immutable prescription and the exact rest recommendation", () => {
   const counts = {};
   for (const exercise of data.exercises) {
     const result = get(exercise.id);
@@ -128,7 +128,60 @@ test("every one of the 59 exercises has a valid immutable prescription and the e
     assert.ok(result.sets.every(Object.isFrozen));
     counts[result.kind] = (counts[result.kind] || 0) + 1;
   }
-  assert.deepEqual(counts, { main: 29, accessory: 17, bodyweight: 9, core: 4 });
+  assert.deepEqual(counts, { main: 29, accessory: 17, bodyweight: 9, core: 5 });
+});
+
+test("all unilateral library exercises label every warmup, lead-in and working set per side", () => {
+  for (const id of ["ex007", "ex008", "ex009", "ex010", "ex011", "ex025"]) {
+    const result = get(id);
+    assert.equal(result.scheme, "2+1+2");
+    assert.equal(result.setCount, 5);
+    assert.match(result.summaryRepetitions, /на каждую сторону$/);
+    assert.deepEqual(plain(result.sets.map(set => [set.type, set.repetitions, set.repetitionQualifier])), [
+      ["Разминочный", "12", "на каждую сторону"], ["Разминочный", "12", "на каждую сторону"],
+      ["Подводящий", "12", "на каждую сторону"], ["Рабочий", "12–15", "на каждую сторону"],
+      ["Рабочий", "12–15", "на каждую сторону"]
+    ]);
+  }
+});
+
+test("unilateral accessory and bodyweight modes qualify every set without changing their schemes", () => {
+  const accessory = load.getPrescription({ ...data.exerciseById.ex014, unilateral: true });
+  assert.equal(accessory.scheme, "2+2");
+  assert.equal(accessory.setCount, 4);
+  assert.ok(accessory.sets.every(set => set.repetitionQualifier === "на каждую сторону"));
+  for (const id of load.BODYWEIGHT_IDS) {
+    const result = load.getPrescription({ ...data.exerciseById[id], unilateral: true });
+    assert.equal(result.scheme, "5×12");
+    assert.equal(result.setCount, 5);
+    assert.ok(result.sets.every(set => set.repetitions === "12" && set.repetitionQualifier === "на каждую сторону"));
+  }
+});
+
+test("unilateral presentation never changes the base prescription or adds labels to bilateral exercises", () => {
+  for (const exercise of data.exercises) {
+    const bilateral = load.getPrescription({ ...exercise, unilateral: false });
+    assert.ok(bilateral.sets.every(set => set.repetitionQualifier === undefined));
+    assert.doesNotMatch(bilateral.summaryRepetitions, /на каждую сторону/);
+    const result = load.getPrescription(exercise);
+    assert.equal(result.rest, bilateral.rest);
+    assert.equal(result.scheme, bilateral.scheme);
+    assert.equal(result.setCount, bilateral.setCount);
+    assert.equal(result.instruction, bilateral.instruction);
+    assert.deepEqual(plain(result.sets.map(({ repetitionQualifier, ...set }) => set)), plain(bilateral.sets));
+  }
+});
+
+test("v1.0/v1.1 choices for unilateral rows and Face Pull survive restore without migration", () => {
+  const saved = core.defaultState();
+  saved.blocks.block2["block2-position1"] = "ex025";
+  saved.blocks.block3["block3-position5"] = "ex030";
+  const serialized = JSON.stringify(saved);
+  const restored = core.restoreState(serialized);
+  assert.equal(restored.repaired, false);
+  assert.equal(JSON.stringify(restored.state), serialized);
+  assert.ok(get(restored.state.blocks.block2["block2-position1"]).sets.every(set => set.repetitionQualifier === "на каждую сторону"));
+  assert.equal(data.exerciseById[restored.state.blocks.block3["block3-position5"]].name, "Тяга каната к лицу (Face Pull)");
 });
 
 test("incomplete metadata produces a readable diagnostic instead of a fallback scheme", () => {

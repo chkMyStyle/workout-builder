@@ -1,4 +1,4 @@
-// Схемы нагрузки v1.1. Производные данные: сохранения не изменяются.
+// Схемы нагрузки v1.2. Производные данные: сохранения не изменяются.
 (function () {
   "use strict";
 
@@ -74,13 +74,24 @@
     }
     // The priority is intentional: muscle group, explicit bodyweight IDs, role.
     if (exercise.category === "Мышцы корпуса") return core;
-    if (PULLUP_IDS.includes(exercise.id)) return pullup;
-    if (exercise.id === "ex038") return dips;
-    if (exercise.id === "ex059") return reverseBenchPushup;
-    if (PUSHUP_IDS.includes(exercise.id)) return pushup;
-    if (exercise.role === "Основное") return main;
-    if (exercise.role === "Вспомогательное") return accessory;
-    throw diagnostic(exercise, "неизвестная роль упражнения; ожидается «Основное» или «Вспомогательное»");
+    let load;
+    if (PULLUP_IDS.includes(exercise.id)) load = pullup;
+    else if (exercise.id === "ex038") load = dips;
+    else if (exercise.id === "ex059") load = reverseBenchPushup;
+    else if (PUSHUP_IDS.includes(exercise.id)) load = pushup;
+    else if (exercise.role === "Основное") load = main;
+    else if (exercise.role === "Вспомогательное") load = accessory;
+    else throw diagnostic(exercise, "неизвестная роль упражнения; ожидается «Основное» или «Вспомогательное»");
+
+    if (exercise.unilateral !== true) return load;
+    // The qualifier changes presentation only, never set counts, ranges or rest.
+    return Object.freeze({
+      ...load,
+      summaryRepetitions: `${load.summaryRepetitions} на каждую сторону`,
+      sets: Object.freeze(load.sets.map(set => Object.freeze({
+        ...set, repetitionQualifier: "на каждую сторону"
+      })))
+    });
   }
 
   window.WorkoutLoad = Object.freeze({
