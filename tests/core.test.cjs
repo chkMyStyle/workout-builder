@@ -18,7 +18,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 const approved = [
   [
     ["ex001", "ex003", "ex004", "ex005", "ex006", "ex002"],
-    ["ex041", "ex040", "ex039"], ["ex055", "ex056", "ex057"],
+    ["ex041", "ex040", "ex039"], ["ex055", "ex056", "ex057", "ex060"],
     ["ex014"], ["ex044", "ex045"], ["ex009", "ex008", "ex010", "ex011"]
   ],
   [
@@ -37,23 +37,54 @@ const approved = [
   ]
 ];
 
-test("59 unique exercises and complete classifications", () => {
-  assert.equal(data.exercises.length, 59);
-  assert.equal(new Set(data.exercises.map(exercise => exercise.id)).size, 59);
+test("60 unique exercises and complete classifications", () => {
+  assert.equal(data.exercises.length, 60);
+  assert.equal(new Set(data.exercises.map(exercise => exercise.id)).size, 60);
   assert.equal(data.exercises.some(exercise => /ягодичный мост|гравитрон|классическая становая/i.test(exercise.name)), false);
   const counts = {};
   for (const exercise of data.exercises) {
     for (const key of ["id", "name", "category", "primaryMuscles", "secondaryMuscles", "movement", "role"]) assert.ok(exercise[key]);
     counts[exercise.category] = (counts[exercise.category] || 0) + 1;
   }
-  assert.deepEqual(Object.values(counts), [18, 12, 8, 8, 4, 5, 4]);
+  assert.deepEqual(Object.values(counts), [18, 12, 8, 8, 4, 5, 5]);
 });
 
-test("all original 58 exercise records exactly preserve the pre-v1.1 library", () => {
-  const originals = data.exercises.filter(exercise => exercise.id !== "ex059");
+test("original exercise metadata is unchanged apart from the approved unilateral flags and Face Pull name", () => {
+  const originals = data.exercises.filter(exercise => !["ex059", "ex060"].includes(exercise.id)).map(exercise => {
+    const { unilateral, ...original } = exercise;
+    if (original.id === "ex030") original.name = "Тяга каната к лицу";
+    return original;
+  });
   const digest = crypto.createHash("sha256").update(JSON.stringify(originals)).digest("hex");
   assert.equal(originals.length, 58);
   assert.equal(digest, "00b6ce6614d9a5d2358c67795bb2707bba2499b54e97ff57a65a42dd9451eb1c");
+});
+
+test("exactly the six explicitly unilateral movements have the unilateral flag", () => {
+  assert.deepEqual(plain(data.exercises.filter(exercise => exercise.unilateral === true).map(exercise => exercise.id)),
+    ["ex007", "ex008", "ex009", "ex010", "ex011", "ex025"]);
+  for (const exercise of data.exercises) assert.ok(exercise.unilateral === undefined || typeof exercise.unilateral === "boolean");
+});
+
+test("toes-to-bar is a separate core exercise and is permitted only in the existing core position", () => {
+  assert.deepEqual(plain(data.exerciseById.ex060), {
+    id: "ex060", name: "Подъём прямых ног к перекладине", category: "Мышцы корпуса",
+    primaryMuscles: "Сгибатели бедра, мышцы живота", secondaryMuscles: "Мышцы хвата",
+    movement: "Сгибание бедра с подъёмом ног к перекладине; при подъёме таза дополнительно сгибание позвоночника",
+    role: "Вспомогательное"
+  });
+  for (const id of ["ex055", "ex056", "ex057", "ex058"]) assert.ok(data.exerciseById[id]);
+  const positions = templates.flatMap(template => template.positions).filter(position => position.allowedExerciseIds.includes("ex060"));
+  assert.deepEqual(plain(positions.map(position => position.positionId)), ["block1-position3"]);
+  assert.equal(positions[0].defaultExerciseId, "ex055");
+});
+
+test("Face Pull retains its ID and classification with the new display name", () => {
+  assert.deepEqual(plain(data.exerciseById.ex030), {
+    id: "ex030", name: "Тяга каната к лицу (Face Pull)", category: "Спина",
+    primaryMuscles: "Задние дельты, средняя и нижняя трапеция", secondaryMuscles: "Наружные ротаторы плеча",
+    movement: "Горизонтальное отведение / наружная ротация", role: "Вспомогательное"
+  });
 });
 
 test("reverse bench pushups have the requested classification, description, warning and informational link to dips", () => {
