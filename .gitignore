@@ -1,0 +1,8 @@
+# Local archives and machine-specific files are not part of the website.
+*.7z
+*.zip
+Thumbs.db
+.DS_Store
+.env
+.env.*
+node_modules/
