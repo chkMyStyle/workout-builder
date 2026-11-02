@@ -31,8 +31,6 @@ button:active:not(:disabled), summary:active { transform: translateY(1px); }
 .brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--ink); color: var(--accent); }
 .brand-mark .icon { width: 25px; height: 25px; }
 .brand-dot { color: var(--accent); }
-.offline-badge { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
 .page-intro { padding: 5px 0 18px; }
 h1 { margin: 0; max-width: 650px; font-size: 28px; line-height: 1.12; letter-spacing: -.9px; font-weight: 700; }
 .block-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin-bottom: 12px; padding: 3px; background: var(--paper); border-radius: 9px; }
