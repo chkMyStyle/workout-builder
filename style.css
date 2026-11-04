@@ -45,7 +45,9 @@ h1 { margin: 0; max-width: 650px; font-size: 28px; line-height: 1.12; letter-spa
 .exercise-row:last-child { border-bottom: 0; }
 .exercise-number { color: var(--muted); font-size: 13px; line-height: 1.6; padding-top: 3px; font-variant-numeric: tabular-nums; }
 .exercise-body { min-width: 0; }
+.exercise-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .exercise-title { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.4; letter-spacing: -.2px; }
+.replacement-badge { color: #267343; font-size: 13px; font-weight: 600; line-height: 1.5; }
 .muscles { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 6px 0 0; }
 .load-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 10px; font-size: 15px; line-height: 1.5; }
 .load-summary > span { min-width: 0; }
@@ -88,6 +90,7 @@ details[open] > summary .details-arrow { transform: rotate(-90deg); }
 .reset-button .icon { width: 15px; height: 15px; }
 .reset-button:hover:not(:disabled) { color: var(--ink); }
 .reset-button:disabled { opacity: .45; }
+.reset-exercise-button { margin-top: 4px; max-width: 100%; text-align: left; }
 .storage-warning { margin: 0 0 14px; font-size: 13px; line-height: 1.6; color: #943A16; }
 .training-instructions { border-top: 1px solid var(--line); padding: 17px 0 0; }
 .rest-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }

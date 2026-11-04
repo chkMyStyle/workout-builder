@@ -92,6 +92,8 @@ const defaultSchemes = [
     await selectBlock("block1");
     const beforeArmRaise = await rowState();
     await change("block1-position5", "ex045");
+    assert.equal(await row("block1-position5").locator(".replacement-badge").textContent(), "Замена");
+    assert.equal(await row("block1-position5").locator(".reset-exercise-button").isVisible(), true);
     await row("block1-position5").locator("summary").click();
     assert.equal(await row("block1-position5").locator(".exercise-title").textContent(), "Отведение руки в сторону с нижнего блока");
     assert.equal(await row("block1-position5").locator(".load-badge").textContent(), "2+2");
@@ -212,6 +214,63 @@ const defaultSchemes = [
     assert.deepEqual((await rowState()).map(item => item.scheme), defaultSchemes[1]);
     console.log("PASS: existing v1 localStorage is unchanged in format, old choices remain compatible, reset affects only its block");
 
+    // Restore existing saves with several replacements, including the leg-curl select.
+    const resetSave = JSON.parse(JSON.stringify(oldSave));
+    resetSave.activeBlockId = "block1";
+    resetSave.blocks.block1["block1-position5"] = "ex045";
+    resetSave.blocks.block3["block3-position4"] = "ex016";
+    await page.evaluate(([key, saved]) => localStorage.setItem(key, JSON.stringify(saved)), [storageKey, resetSave]);
+    await page.reload();
+    await page.setViewportSize({ width: 320, height: 844 });
+    assert.equal(await page.locator(".replacement-badge").count(), 2);
+    assert.equal(await page.locator(".reset-exercise-button").count(), 2);
+    assert.equal(await row("block1-position1").locator(".replacement-badge").textContent(), "Замена");
+    assert.equal(await row("block1-position1").locator(".replacement-badge").evaluate(el => getComputedStyle(el).color), "rgb(38, 115, 67)");
+    assert.equal(await row("block1-position4").locator(".reset-exercise-button, .replacement-badge").count(), 0);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    const resetBounds = await row("block1-position1").locator(".reset-exercise-button").boundingBox();
+    assert.ok(resetBounds.height >= 44 && resetBounds.x >= 0 && resetBounds.x + resetBounds.width <= 320);
+    if (screenshots) {
+      fs.mkdirSync(screenshots, { recursive: true });
+      await row("block1-position1").screenshot({ path: path.join(screenshots, "replacement-and-reset-mobile.png") });
+    }
+    await row("block1-position5").locator("summary").click();
+    const beforeSingleReset = await rowState();
+    await row("block1-position1").locator(".reset-exercise-button").focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await page.locator("#replacement-dialog").evaluate(element => element.open), false);
+    assert.equal(await row("block1-position1").getAttribute("data-exercise-id"), "ex001");
+    assert.equal(await row("block1-position1").locator(".replacement-badge, .reset-exercise-button").count(), 0);
+    assert.ok(await row("block1-position1").locator(".replace-button").evaluate(el => document.activeElement === el));
+    assert.ok(await row("block1-position5").locator("details").evaluate(el => el.open));
+    const afterSingleReset = await rowState();
+    for (let i = 1; i < 6; i++) assert.deepEqual(afterSingleReset[i], beforeSingleReset[i]);
+    const expectedResetSave = JSON.parse(JSON.stringify(resetSave));
+    expectedResetSave.blocks.block1["block1-position1"] = "ex001";
+    assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storageKey), expectedResetSave);
+    assert.equal(await page.locator("#reset-workout").isEnabled(), true);
+    await page.reload();
+    assert.equal(await row("block1-position1").getAttribute("data-exercise-id"), "ex001");
+    assert.equal(await page.locator(".replacement-badge").count(), 1);
+    await change("block1-position5", "ex044");
+    assert.equal(await page.locator(".replacement-badge, .reset-exercise-button").count(), 0);
+    assert.equal(await page.locator("#reset-workout").isDisabled(), true);
+    await selectBlock("block3");
+    assert.equal(await row("block3-position4").locator(".replacement-badge").count(), 1);
+    await row("block3-position4").locator(".reset-exercise-button").click();
+    assert.equal(await row("block3-position4").locator("select").inputValue(), "ex015");
+    assert.equal(await row("block3-position4").locator(".replacement-badge, .reset-exercise-button").count(), 0);
+    assert.ok(await row("block3-position4").locator("select").evaluate(el => document.activeElement === el));
+    await page.reload();
+    assert.equal(await row("block3-position4").locator("select").inputValue(), "ex015");
+    await selectBlock("block2");
+    assert.equal(await row("block2-position2").getAttribute("data-exercise-id"), "ex035");
+    assert.equal(await row("block2-position2").locator(".replacement-badge").count(), 1);
+    await page.locator("#reset-workout").click();
+    assert.equal(await page.locator(".replacement-badge, .reset-exercise-button").count(), 0);
+    await assertUnique();
+    console.log("PASS: green replacement labels restore from v1 saves; individual keyboard reset changes only its row, preserves other blocks and expanded details, persists on reload and handles the leg-curl select at 320 px; returning to default and full reset remove labels");
+
     for (const width of [320, 375, 390, 430, 580, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: 844 });
       for (const template of templates) {
@@ -266,6 +325,13 @@ const defaultSchemes = [
     await mobile.goto(url);
     await mobile.locator('.exercise-row[data-position-id="block1-position1"] summary').tap();
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    const touchRow = mobile.locator('.exercise-row[data-position-id="block1-position1"]');
+    await touchRow.locator(".replace-button").tap();
+    await mobile.locator('.option-button[data-exercise-id="ex003"]').tap();
+    assert.equal(await touchRow.locator(".replacement-badge").isVisible(), true);
+    await touchRow.locator(".reset-exercise-button").tap();
+    assert.equal(await touchRow.getAttribute("data-exercise-id"), "ex001");
+    assert.equal(await touchRow.locator(".replacement-badge, .reset-exercise-button").count(), 0);
     if (screenshots) await mobile.screenshot({ path: path.join(screenshots, "mobile-expanded.png"), fullPage: true });
     await mobile.setViewportSize({ width: 320, height: 844 });
     const unilateralMobileRow = mobile.locator('.exercise-row[data-position-id="block1-position6"]');

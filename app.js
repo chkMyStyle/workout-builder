@@ -155,6 +155,7 @@
 
   function renderExercise(template, selection, position, index, expanded) {
     const exercise = exerciseById[selection[position.positionId]];
+    const changed = exercise.id !== position.defaultExerciseId;
     const isLegCurl = template.id === "block3" && position.positionId === "block3-position4";
     let control;
     if (isLegCurl) {
@@ -167,7 +168,7 @@
     }
     return `<li class="exercise-row${isLegCurl ? " has-select" : ""}" data-position-id="${position.positionId}" data-exercise-id="${exercise.id}">
       <span class="exercise-number" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-      <div class="exercise-body"><h3 class="exercise-title">${escapeHtml(exercise.name)}</h3><p class="muscles">${escapeHtml(exercise.primaryMuscles)}</p>${renderLoad(exercise, expanded, control)}</div></li>`;
+      <div class="exercise-body"><div class="exercise-heading"><h3 class="exercise-title">${escapeHtml(exercise.name)}</h3>${changed ? '<span class="replacement-badge">Замена</span>' : ""}</div><p class="muscles">${escapeHtml(exercise.primaryMuscles)}</p>${renderLoad(exercise, expanded, control)}${changed ? `<button class="reset-button reset-exercise-button" type="button" data-position-id="${position.positionId}" aria-label="Сбросить упражнение: ${escapeHtml(exercise.name)}">${icon("reset")}<span>Сбросить упражнение</span></button>` : ""}</div></li>`;
   }
 
   function render() {
@@ -247,7 +248,14 @@
 
   list.addEventListener("click", event => {
     const button = event.target.closest("button[data-position-id]");
-    if (button) openReplacement(button.dataset.positionId);
+    if (!button) return;
+    const positionId = button.dataset.positionId;
+    if (button.classList.contains("reset-exercise-button")) {
+      const position = activeTemplate().positions.find(item => item.positionId === positionId);
+      if (position && applyReplacement(positionId, position.defaultExerciseId)) {
+        list.querySelector(`.exercise-row[data-position-id="${positionId}"] .replace-button, .exercise-row[data-position-id="${positionId}"] .curl-select`)?.focus();
+      }
+    } else openReplacement(positionId);
   });
 
   list.addEventListener("change", event => {
