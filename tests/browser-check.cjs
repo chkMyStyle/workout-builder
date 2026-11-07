@@ -34,7 +34,7 @@ const defaultSchemes = [
       if (/^https?:/.test(request.url()) && new URL(request.url()).origin !== new URL(url).origin) thirdPartyRequests.push(request.url());
     });
     await page.goto(url);
-    assert.equal(await page.title(), "Сила — Конструктор тренировок");
+    assert.equal(await page.title(), "СИЛА. Конструктор тренировок");
     assert.equal(await page.locator('meta[name="apple-mobile-web-app-title"]').getAttribute("content"), "Сила");
     assert.equal(await page.locator('link[rel="apple-touch-icon"]').count(), 1);
     assert.equal(await page.locator(".offline-badge").count(), 0);
